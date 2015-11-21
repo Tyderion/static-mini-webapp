@@ -1,5 +1,16 @@
 {
   "name": "test2",
   "private": true,
-  "dependencies": {}
-}
+  "dependencies": {
+    "bootstrap": "~3.3.5"
+    },
+    "overrides": {
+      "bootstrap": {
+        "main": [
+        "dist/css/bootstrap.css",
+        "dist/css/bootstrap.css.map",
+        "dist/js/bootstrap.js"
+        ]
+      }
+    }
+  }
