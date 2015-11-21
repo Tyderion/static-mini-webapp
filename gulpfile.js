@@ -8,6 +8,7 @@ var reload = browserSync.reload;
 var sourcemaps = require('gulp-sourcemaps');
 var concat = require('gulp-concat');
 var inject = require('gulp-inject');
+var rm = require('gulp-rimraf');
 
 var Paths = {
     base: 'app',
@@ -88,7 +89,7 @@ gulp.task('js:app', function() {
 gulp.task('js', ['js:app', 'js:libs']);
 
 
-gulp.task('inject', ['js', 'css'], function() {
+gulp.task('inject', function() {
     return gulp.src(Paths.html.main)
         .pipe(inject(gulp.src([Paths.js.libs.file, Paths.css.libs.file], {
             read: false
@@ -106,6 +107,37 @@ gulp.task('inject', ['js', 'css'], function() {
         }))
         .pipe(gulp.dest(Paths.base));
 });
+
+
+gulp.task( 'clean:tmp', function() {
+  return gulp.src( '.tmp/**/*', { read: false })
+    .pipe( rm() )
+});
+gulp.task( 'clean:dist', function() {
+  return gulp.src( 'dist', { read: false })
+    .pipe( rm() )
+})
+
+gulp.task('clean', ['clean:tmp', 'clean:dist']);
+
+// Watch Files For Changes & Reload
+gulp.task('serve', ['inject','js', 'css'], function() {
+    browserSync({
+        notify: false,
+        port: 9000,
+        // Run as an https by uncommenting 'https: true'
+        // Note: this uses an unsigned certificate which on first access
+        //       will present a certificate warning in the browser.
+        // https: true,
+        server: ['.tmp', 'app']
+    });
+
+    gulp.watch([Paths.html.all], reload);
+    gulp.watch([Paths.css.app.src], ['inject', reload]);
+    gulp.watch([Paths.js.app.src], ['inject', reload]);
+    gulp.watch([Paths.img.base], reload);
+});
+
 
 
 gulp.task('jshint', function() {
@@ -149,36 +181,6 @@ gulp.task('fonts', function() {
         .pipe(gulp.dest('dist/fonts'));
 });
 
-gulp.task('extras', function() {
-    return gulp.src([
-        'app/*.*',
-        '!app/*.html',
-        'node_modules/apache-server-configs/dist/.htaccess'
-    ], {
-        dot: true
-    }).pipe(gulp.dest('dist'));
-});
-
-gulp.task('clean', require('del').bind(null, ['.tmp', 'dist']));
-
-// Watch Files For Changes & Reload
-gulp.task('serve', ['inject', ], function() {
-    browserSync({
-        notify: false,
-        port: 9000,
-        // Run as an https by uncommenting 'https: true'
-        // Note: this uses an unsigned certificate which on first access
-        //       will present a certificate warning in the browser.
-        // https: true,
-        server: ['.tmp', 'app']
-    });
-
-    gulp.watch([Paths.html.all], reload);
-    gulp.watch([Paths.css.app.src], ['inject', reload]);
-    gulp.watch([Paths.js.app.src], ['inject', reload]);
-    gulp.watch([Paths.img.base], reload);
-});
-
 // Build and serve the output from the dist build
 gulp.task('serve:dist', ['default'], function() {
     browserSync({
@@ -206,13 +208,13 @@ gulp.task('watch', ['connect'], function() {
     gulp.watch('bower.json', ['wiredep']);
 });
 
-gulp.task('build', [ /*'jshint', */ 'html', 'images', /*'fonts',*/ 'extras'], function() {
+gulp.task('build:dev',['js', 'css', 'inject']);
+
+gulp.task('build', [ /*'jshint', */ 'html', 'images'/*, 'fonts'*/], function() {
     return gulp.src('dist/**/*').pipe($.size({
         title: 'build',
         gzip: true
     }));
 });
 
-gulp.task('default', ['clean'], function() {
-    gulp.start('build');
-});
+gulp.task('default', ['clean','build']);
