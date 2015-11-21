@@ -5,15 +5,14 @@ var gulp = require('gulp');
 var $ = require('gulp-load-plugins')();
 var browserSync = require('browser-sync');
 var reload = browserSync.reload;
+var sourcemaps = require('gulp-sourcemaps');
 
 gulp.task('styles', function () {
-  return gulp.src('app/styles/main.scss')
+  return gulp.src('app/styles/*.css')
+    .pipe(sourcemaps.init())
     .pipe($.plumber())
-    .pipe($.rubySass({
-      style: 'expanded',
-      precision: 10
-    }))
     .pipe($.autoprefixer({browsers: ['last 1 version']}))
+    .pipe(sourcemaps.write())
     .pipe(gulp.dest('.tmp/styles'));
 });
 
@@ -69,6 +68,7 @@ gulp.task('clean', require('del').bind(null, ['.tmp', 'dist']));
 gulp.task('serve', ['styles'], function () {
   browserSync({
     notify: false,
+    port: 9000,
     // Run as an https by uncommenting 'https: true'
     // Note: this uses an unsigned certificate which on first access
     //       will present a certificate warning in the browser.
