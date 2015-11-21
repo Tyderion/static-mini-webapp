@@ -13,59 +13,9 @@ var jshint = require('gulp-jshint');
 var plumber = require('gulp-plumber');
 var uglify = require('gulp-uglify');
 var csso = require('gulp-csso');
+var runSequence = require('run-sequence');
 
-var Paths = {
-    base: 'app',
-    dist: {
-        css: 'dist/styles',
-        js: 'dist/js',
-        images: 'dist/images',
-        fonts: 'dist/fonts',
-        html: 'dist'
-    },
-    html: {
-        main: 'app/*.html',
-        all: 'app/**/*.html'
-    },
-    images: {
-        base: 'images',
-        all: 'images/**/*'
-    },
-    fonts: {
-      base: 'fonts',
-      all: 'fonts/**/*.{eot,svg,ttf,woff}'
-    },
-    js: {
-        dest: '.tmp/js',
-        libs: {
-            src: 'app/lib/**/*.js',
-            file: '.tmp/js/libs.js',
-            dist: 'dist/js/libs.js',
-            name: 'libs.js'
-        },
-        app: {
-            src: 'app/scripts/**/*.js',
-            file: '.tmp/js/main.js',
-            dist: 'dist/js/main.js',
-            name: 'main.js'
-        }
-    },
-    css: {
-        dest: '.tmp/styles',
-        libs: {
-            src: 'app/lib/**/*.css',
-            file: '.tmp/styles/libs.css',
-            dist: 'dist/styles/libs.css',
-            name: 'libs.css'
-        },
-        app: {
-            src: 'app/styles/**/*.css',
-            file: '.tmp/styles/main.css',
-            dist: 'dist/styles/main.css',
-            name: 'main.css'
-        }
-    }
-}
+var Paths = require('./project.config.js').paths;
 
 gulp.task('css:app', function() {
     return gulp.src(Paths.css.app.src)
@@ -108,7 +58,7 @@ gulp.task('js:app', function() {
 
 gulp.task('js', ['js:app', 'js:libs']);
 
-gulp.task('inject',['js', 'css'], function() {
+gulp.task('inject', ['js', 'css'], function() {
     return gulp.src(Paths.html.main)
         .pipe(inject(gulp.src([Paths.js.libs.file, Paths.css.libs.file], {
             read: false
@@ -142,23 +92,7 @@ gulp.task('clean:dist', function() {
 
 gulp.task('clean', ['clean:tmp', 'clean:dist']);
 
-// Watch Files For Changes & Reload
-gulp.task('serve', ['inject', 'js', 'css'], function() {
-    browserSync({
-        notify: false,
-        port: 9000,
-        // Run as an https by uncommenting 'https: true'
-        // Note: this uses an unsigned certificate which on first access
-        //       will present a certificate warning in the browser.
-        // https: true,
-        server: ['.tmp', 'app']
-    });
 
-    gulp.watch([Paths.html.all], reload);
-    gulp.watch([Paths.css.app.src], ['inject', reload]);
-    gulp.watch([Paths.js.app.src], ['jshint', 'inject', reload]);
-    gulp.watch([Paths.images.base], reload);
-});
 
 gulp.task('jshint:app', function() {
     return gulp.src(Paths.js.app.src)
@@ -201,19 +135,34 @@ gulp.task('uglify:libs', ['uglify:css:libs', 'uglify:js:libs']);
 
 gulp.task('uglify', ['uglify:app', 'uglify:libs']);
 
-gulp.task('html:dist-copy',['inject'], function() {
+gulp.task('html:dist-copy', ['inject'], function() {
     return gulp.src(Paths.html.main)
-        // .pipe($.minifyHtml({
-        //     conditionals: true,
-        //     loose: true
-        // }))
+        .pipe($.minifyHtml({
+            conditionals: true,
+            loose: true
+        }))
         .pipe(gulp.dest(Paths.dist.html))
 });
 
-gulp.task('build:dist', ['clean', 'html:dist-copy', 'uglify', 'fonts:dist', 'images:dist']);
+gulp.task('dist:size', function() {
+    return gulp.src('dist/**/*').pipe($.size({
+        title: 'build',
+        gzip: true
+    }));
+})
+
+gulp.task('build:dist', function(cb) {
+    runSequence('clean',
+      ['html:dist-copy', 'uglify', 'fonts:dist', 'images:dist'],
+        'dist:size',
+        cb);
+
+});
+
+gulp.task('build:dev', ['js', 'css', 'inject']);
 
 gulp.task('images:dist', function() {
-    return gulp.src(Path.images.all)
+    return gulp.src(Paths.images.all)
         .pipe($.cache($.imagemin({
             progressive: true,
             interlaced: true
@@ -222,14 +171,15 @@ gulp.task('images:dist', function() {
 });
 
 gulp.task('fonts:dist', function() {
-    return gulp.src(Path.fonts.all)
+    return gulp.src(Paths.fonts.all)
         .pipe(gulp.dest(Paths.dist.fonts));
 });
 
 // Build and serve the output from the dist build
-gulp.task('serve:dist', ['default'], function() {
+gulp.task('serve:dist', ['build:dist'], function() {
     browserSync({
         notify: false,
+        port: 9001,
         // Run as an https by uncommenting 'https: true'
         // Note: this uses an unsigned certificate which on first access
         //       will present a certificate warning in the browser.
@@ -238,13 +188,24 @@ gulp.task('serve:dist', ['default'], function() {
     });
 });
 
-gulp.task('build:dev', ['js', 'css', 'inject']);
+// Watch Files For Changes & Reload
+gulp.task('serve', ['build:dev'], function() {
+    browserSync({
+        notify: false,
+        port: 9000,
+        // Run as an https by uncommenting 'https: true'
+        // Note: this uses an unsigned certificate which on first access
+        //       will present a certificate warning in the browser.
+        // https: true,
+        server: ['.tmp', 'app']
+    });
 
-gulp.task('build', [ /*'jshint', */ 'html', 'images' /*, 'fonts'*/ ], function() {
-    return gulp.src('dist/**/*').pipe($.size({
-        title: 'build',
-        gzip: true
-    }));
+    gulp.watch([Paths.html.all], reload);
+    gulp.watch([Paths.css.app.src], ['inject', reload]);
+    gulp.watch([Paths.js.app.src], ['jshint', 'inject', reload]);
+    gulp.watch([Paths.images.base], reload);
 });
 
-gulp.task('default', ['clean', 'build']);
+gulp.task('default', function(cb) {
+  runSequence('clean', 'serve', cb);
+});
