@@ -11,26 +11,42 @@ var inject = require('gulp-inject');
 var rm = require('gulp-rimraf');
 var jshint = require('gulp-jshint');
 var plumber = require('gulp-plumber');
+var uglify = require('gulp-uglify');
+var csso = require('gulp-csso');
 
 var Paths = {
     base: 'app',
+    dist: {
+        css: 'dist/styles',
+        js: 'dist/js',
+        images: 'dist/images',
+        fonts: 'dist/fonts',
+        html: 'dist'
+    },
     html: {
         main: 'app/*.html',
         all: 'app/**/*.html'
     },
-    img: {
-        base: 'images'
+    images: {
+        base: 'images',
+        all: 'images/**/*'
+    },
+    fonts: {
+      base: 'fonts',
+      all: 'fonts/**/*.{eot,svg,ttf,woff}'
     },
     js: {
         dest: '.tmp/js',
         libs: {
             src: 'app/lib/**/*.js',
             file: '.tmp/js/libs.js',
+            dist: 'dist/js/libs.js',
             name: 'libs.js'
         },
         app: {
             src: 'app/scripts/**/*.js',
             file: '.tmp/js/main.js',
+            dist: 'dist/js/main.js',
             name: 'main.js'
         }
     },
@@ -39,11 +55,13 @@ var Paths = {
         libs: {
             src: 'app/lib/**/*.css',
             file: '.tmp/styles/libs.css',
+            dist: 'dist/styles/libs.css',
             name: 'libs.css'
         },
         app: {
             src: 'app/styles/**/*.css',
             file: '.tmp/styles/main.css',
+            dist: 'dist/styles/main.css',
             name: 'main.css'
         }
     }
@@ -90,7 +108,7 @@ gulp.task('js:app', function() {
 
 gulp.task('js', ['js:app', 'js:libs']);
 
-gulp.task('inject', function() {
+gulp.task('inject',['js', 'css'], function() {
     return gulp.src(Paths.html.main)
         .pipe(inject(gulp.src([Paths.js.libs.file, Paths.css.libs.file], {
             read: false
@@ -110,7 +128,7 @@ gulp.task('inject', function() {
 });
 
 gulp.task('clean:tmp', function() {
-    return gulp.src('.tmp/**/*', {
+    return gulp.src('.tmp', {
             read: false
         })
         .pipe(rm())
@@ -139,49 +157,73 @@ gulp.task('serve', ['inject', 'js', 'css'], function() {
     gulp.watch([Paths.html.all], reload);
     gulp.watch([Paths.css.app.src], ['inject', reload]);
     gulp.watch([Paths.js.app.src], ['jshint', 'inject', reload]);
-    gulp.watch([Paths.img.base], reload);
+    gulp.watch([Paths.images.base], reload);
 });
 
-gulp.task('jshint', function() {
+gulp.task('jshint:app', function() {
     return gulp.src(Paths.js.app.src)
         .pipe(jshint())
         .pipe(jshint.reporter('jshint-stylish'))
         .pipe(jshint.reporter('fail'));
 });
-
-
-gulp.task('html', ['css', 'js'], function() {
-    var assets = $.useref.assets({
-        searchPath: '{.tmp,app}'
-    });
-
-    return gulp.src(Paths.html.main)
-        .pipe(assets)
-        .pipe($.if('*.js', $.uglify()))
-        .pipe($.if('*.css', $.csso()))
-        .pipe(assets.restore())
-        .pipe($.useref())
-        // .pipe($.if('*.html', $.minifyHtml({
-        //     conditionals: true,
-        //     loose: true
-        // })))
-        .pipe(gulp.dest('dist'));
+gulp.task('jshint:libs', function() {
+    return gulp.src(Paths.js.libs.src)
+        .pipe(jshint())
+        .pipe(jshint.reporter('jshint-stylish'))
+        .pipe(jshint.reporter('fail'));
 });
 
-gulp.task('images', function() {
-    return gulp.src('app/images/**/*')
+gulp.task('uglify:js:app', ['js:app'], function() {
+    return gulp.src([Paths.js.app.file])
+        .pipe(uglify())
+        .pipe(gulp.dest(Paths.dist.js));
+});
+gulp.task('uglify:css:app', ['css:app'], function() {
+    return gulp.src([Paths.css.app.file])
+        .pipe(csso())
+        .pipe(gulp.dest(Paths.dist.css));
+});
+
+gulp.task('uglify:app', ['uglify:css:app', 'uglify:js:app']);
+
+gulp.task('uglify:js:libs', ['js:libs'], function() {
+    return gulp.src([Paths.js.libs.file])
+        .pipe(uglify())
+        .pipe(gulp.dest(Paths.dist.js));
+});
+gulp.task('uglify:css:libs', ['css:libs'], function() {
+    return gulp.src([Paths.css.libs.file])
+        .pipe(csso())
+        .pipe(gulp.dest(Paths.dist.css));
+});
+
+gulp.task('uglify:libs', ['uglify:css:libs', 'uglify:js:libs']);
+
+gulp.task('uglify', ['uglify:app', 'uglify:libs']);
+
+gulp.task('html:dist-copy',['inject'], function() {
+    return gulp.src(Paths.html.main)
+        // .pipe($.minifyHtml({
+        //     conditionals: true,
+        //     loose: true
+        // }))
+        .pipe(gulp.dest(Paths.dist.html))
+});
+
+gulp.task('build:dist', ['clean', 'html:dist-copy', 'uglify', 'fonts:dist', 'images:dist']);
+
+gulp.task('images:dist', function() {
+    return gulp.src(Path.images.all)
         .pipe($.cache($.imagemin({
             progressive: true,
             interlaced: true
         })))
-        .pipe(gulp.dest('dist/images'));
+        .pipe(gulp.dest(Paths.dist.images));
 });
 
-gulp.task('fonts', function() {
-    return gulp.src(require('main-bower-files')().concat('app/fonts/**/*'))
-        .pipe($.filter('**/*.{eot,svg,ttf,woff}'))
-        .pipe($.flatten())
-        .pipe(gulp.dest('dist/fonts'));
+gulp.task('fonts:dist', function() {
+    return gulp.src(Path.fonts.all)
+        .pipe(gulp.dest(Paths.dist.fonts));
 });
 
 // Build and serve the output from the dist build
@@ -194,21 +236,6 @@ gulp.task('serve:dist', ['default'], function() {
         // https: true,
         server: 'dist'
     });
-});
-
-gulp.task('watch', ['connect'], function() {
-    $.livereload.listen();
-
-    // watch for changes
-    gulp.watch([
-        'app/*.html',
-        '.tmp/styles/**/*.css',
-        'app/scripts/**/*.js',
-        'app/images/**/*'
-    ]).on('change', $.livereload.changed);
-
-    gulp.watch('app/styles/**/*.scss', ['styles']);
-    gulp.watch('bower.json', ['wiredep']);
 });
 
 gulp.task('build:dev', ['js', 'css', 'inject']);
