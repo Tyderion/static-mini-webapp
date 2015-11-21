@@ -9,6 +9,8 @@ var sourcemaps = require('gulp-sourcemaps');
 var concat = require('gulp-concat');
 var inject = require('gulp-inject');
 var rm = require('gulp-rimraf');
+var jshint = require('gulp-jshint');
+var plumber = require('gulp-plumber');
 
 var Paths = {
     base: 'app',
@@ -50,7 +52,7 @@ var Paths = {
 gulp.task('css:app', function() {
     return gulp.src(Paths.css.app.src)
         .pipe(sourcemaps.init())
-        .pipe($.plumber())
+        .pipe(plumber())
         .pipe($.autoprefixer({
             browsers: ['last 1 version']
         }))
@@ -61,7 +63,7 @@ gulp.task('css:app', function() {
 gulp.task('css:libs', function() {
     return gulp.src(Paths.css.libs.src)
         .pipe(sourcemaps.init())
-        .pipe($.plumber())
+        .pipe(plumber())
         .pipe(concat(Paths.css.libs.name))
         .pipe(sourcemaps.write())
         .pipe(gulp.dest(Paths.css.dest));
@@ -72,7 +74,7 @@ gulp.task('css', ['css:app', 'css:libs']);
 gulp.task('js:libs', function() {
     return gulp.src(Paths.js.libs.src)
         .pipe(sourcemaps.init())
-        .pipe($.plumber())
+        .pipe(plumber())
         .pipe(concat(Paths.js.libs.name))
         .pipe(sourcemaps.write())
         .pipe(gulp.dest(Paths.js.dest));
@@ -80,14 +82,13 @@ gulp.task('js:libs', function() {
 gulp.task('js:app', function() {
     return gulp.src(Paths.js.app.src)
         .pipe(sourcemaps.init())
-        .pipe($.plumber())
+        .pipe(plumber())
         .pipe(concat(Paths.js.app.name))
         .pipe(sourcemaps.write())
         .pipe(gulp.dest(Paths.js.dest));
 });
 
 gulp.task('js', ['js:app', 'js:libs']);
-
 
 gulp.task('inject', function() {
     return gulp.src(Paths.html.main)
@@ -108,20 +109,23 @@ gulp.task('inject', function() {
         .pipe(gulp.dest(Paths.base));
 });
 
-
-gulp.task( 'clean:tmp', function() {
-  return gulp.src( '.tmp/**/*', { read: false })
-    .pipe( rm() )
+gulp.task('clean:tmp', function() {
+    return gulp.src('.tmp/**/*', {
+            read: false
+        })
+        .pipe(rm())
 });
-gulp.task( 'clean:dist', function() {
-  return gulp.src( 'dist', { read: false })
-    .pipe( rm() )
+gulp.task('clean:dist', function() {
+    return gulp.src('dist', {
+            read: false
+        })
+        .pipe(rm())
 })
 
 gulp.task('clean', ['clean:tmp', 'clean:dist']);
 
 // Watch Files For Changes & Reload
-gulp.task('serve', ['inject','js', 'css'], function() {
+gulp.task('serve', ['inject', 'js', 'css'], function() {
     browserSync({
         notify: false,
         port: 9000,
@@ -134,18 +138,17 @@ gulp.task('serve', ['inject','js', 'css'], function() {
 
     gulp.watch([Paths.html.all], reload);
     gulp.watch([Paths.css.app.src], ['inject', reload]);
-    gulp.watch([Paths.js.app.src], ['inject', reload]);
+    gulp.watch([Paths.js.app.src], ['jshint', 'inject', reload]);
     gulp.watch([Paths.img.base], reload);
 });
 
-
-
 gulp.task('jshint', function() {
     return gulp.src(Paths.js.app.src)
-        .pipe($.jshint())
-        .pipe($.jshint.reporter('jshint-stylish'))
-        .pipe($.jshint.reporter('fail'));
+        .pipe(jshint())
+        .pipe(jshint.reporter('jshint-stylish'))
+        .pipe(jshint.reporter('fail'));
 });
+
 
 gulp.task('html', ['css', 'js'], function() {
     var assets = $.useref.assets({
@@ -208,13 +211,13 @@ gulp.task('watch', ['connect'], function() {
     gulp.watch('bower.json', ['wiredep']);
 });
 
-gulp.task('build:dev',['js', 'css', 'inject']);
+gulp.task('build:dev', ['js', 'css', 'inject']);
 
-gulp.task('build', [ /*'jshint', */ 'html', 'images'/*, 'fonts'*/], function() {
+gulp.task('build', [ /*'jshint', */ 'html', 'images' /*, 'fonts'*/ ], function() {
     return gulp.src('dist/**/*').pipe($.size({
         title: 'build',
         gzip: true
     }));
 });
 
-gulp.task('default', ['clean','build']);
+gulp.task('default', ['clean', 'build']);
