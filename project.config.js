@@ -1,6 +1,7 @@
 module.exports = {
     paths: {
         base: 'app',
+        build: '.tmp/',
         dist: {
             css: 'dist/styles',
             js: 'dist/js',
@@ -9,8 +10,9 @@ module.exports = {
             html: 'dist'
         },
         html: {
-            main: 'app/*.html',
-            all: 'app/**/*.html'
+            main: 'app/*.tpl.html',
+            built: '.tmp/*.html',
+            all: 'app/**/*.html',
         },
         images: {
             base: 'images',
