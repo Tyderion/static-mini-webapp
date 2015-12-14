@@ -18,6 +18,7 @@ var injectfile = require('gulp-inject-file');
 var ext_replace = require('gulp-ext-replace');
 
 var Paths = require('./project.config.js').paths;
+var Config = require('./project.config.js').config;
 
 gulp.task('css:app', function() {
     return gulp.src(Paths.css.app.src)
@@ -205,7 +206,7 @@ gulp.task('serve:dist', ['build:dist'], function() {
 gulp.task('serve', ['build:dev'], function() {
     browserSync({
         notify: false,
-        port: 9000,
+        port: Config.port,
         // Run as an https by uncommenting 'https: true'
         // Note: this uses an unsigned certificate which on first access
         //       will present a certificate warning in the browser.

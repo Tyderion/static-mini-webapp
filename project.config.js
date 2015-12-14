@@ -1,4 +1,7 @@
 module.exports = {
+    config: {
+        port: 3000
+    },
     paths: {
         base: 'app',
         build: '.tmp/',
