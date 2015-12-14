@@ -85,7 +85,7 @@ gulp.task('inject:html', function() {
     .pipe(injectfile({
                     // can use custom regex pattern here
                     // <filename> token will be replaces by filename regex pattern.
-                    pattern: '<!--\\sinjectf:<filename>\\s?-->'
+                    pattern: '<include path="<filename>"\\s?/?>'
                 }))
     .pipe(ext_replace('.html', '.tpl.html'))
     .pipe(gulp.dest(Paths.build))
